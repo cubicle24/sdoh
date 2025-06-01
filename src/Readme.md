@@ -1,13 +1,15 @@
-# Clinical Guidelines RAG System
+# Social Determinants of Health (SDOH) Autonomous Agent
 
-A Retrieval-Augmented Generation (RAG) system for clinical screening guidelines.
+An AI agent that scans clinical notes, extracts SDOH risk factors, maps to ICD10 Z-codes, and recommends local interventions.
 
-Motivation: Screening and prevention of disease is still the most effective treatment we have.  It also saves the most money.
-However, there are at least 97 screening guidelines (which frequently change) that healthcare providers are expected to remember.
-This is not realistic for providers, and it results in many patients not receiving the care that the evidence suggests.
-This clinical decision support system intelligently parses a patient's clinical note(s) and retrieves relevant screening guidelines.
+Motivation: Social Determinants of Health (SDOH) are environmental, cultural, economic, and yes, social factors that are responsible for 50-80% of health outcomes.  Common examples are food insecurity, housing insecurity, financial hardship, lack of trasnportation, low health literacy, and domestic violence. It
+is not hard to see why a patient who has one or more of these factors would be
+less healthy than a patient who does not have these factors.
 
-This system is for educational purposes and does not replace professional medical advice.
+Despite their high importance, SDOH are routinely overlooked in clinical care. Documenting and directly addressing SDOH are also increasingly tied to reimubrsement and quality scores for providers and health systems.
+An AI agent that continuously scans free-text clinical notes to identify patients who could benefit from SDOH interventions has potential to drive better health outcomes.
+
+This agent is for educational purposes and does not replace professional medical advice.
 
 ## Features
 
