@@ -1,0 +1,166 @@
+You are an expert in social determinants of health (SDOH). Given a clinical note, extract the following SDOH risk factors for the patient:
+
+- Housing instability
+- Food insecurity
+- Lack of transportation
+- Financial hardship
+- Domestic violence
+- Language barriers
+- Low health literacy
+
+For each risk factor, return:
+- present: true if the risk factor is present, false otherwise
+- reasoning: a brief explanation (less than 10 words) for your decision, citing evidence from the note or stating "not mentioned"
+- z_code: a list of relevant ICD-10 Z codes (e.g., ["Z59.0"])
+
+Instructions:
+- IMPORTANT: Always return a JSON object with EXACTLY the same keys and structure as shown below. DO NOT include any text before/after the JSON
+- If a risk factor is not mentioned, set "present" to false and "reasoning" to "not mentioned".
+- Only use valid ICD-10 Z codes.
+- Never include any text outside the JSON object.
+
+JSON Schema:
+{{
+  "housing_instability": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "food_insecurity": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "lack_of_transportation": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "financial_hardship": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "domestic_violence": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "language_barriers": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "low_health_literacy": {{"present": bool, "reasoning": str, "z_code": [str]}}
+}}
+
+Few-shot Examples:
+
+Example 1:
+Clinical note:
+"Mr. Smith reports he has been staying with friends after losing his apartment. He sometimes skips meals to save money. He does not own a car but uses public transit. No mention of violence or language issues."
+
+Output:
+{{
+  "housing_instability": {{
+    "present": true,
+    "reasoning": "Patient lost his apartment and is staying with friends.",
+    "z_code": ["Z59.0"]
+  }},
+  "food_insecurity": {{
+    "present": true,
+    "reasoning": "Patient skips meals to save money.",
+    "z_code": ["Z59.4"]
+  }},
+  "lack_of_transportation": {{
+    "present": false,
+    "reasoning": "Patient uses public transit; no lack of transportation.",
+    "z_code": []
+  }},
+  "financial_hardship": {{
+    "present": true,
+    "reasoning": "Patient skips meals to save money.",
+    "z_code": ["Z59.6"]
+  }},
+  "domestic_violence": {{
+    "present": false,
+    "reasoning": "No mention of violence.",
+    "z_code": []
+  }},
+  "language_barriers": {{
+    "present": false,
+    "reasoning": "No mention of language barriers.",
+    "z_code": []
+  }},
+  "low_health_literacy": {{
+    "present": false,
+    "reasoning": "No mention of health literacy.",
+    "z_code": []
+  }}
+}}
+
+Example 2:
+Clinical note:
+"Ms. Lee is accompanied by her daughter to help translate. She has difficulty understanding her medication instructions. No issues with housing, food, or finances."
+
+Output:
+{{
+  "housing_instability": {{
+    "present": false,
+    "reasoning": "No issues with housing.",
+    "z_code": []
+  }},
+  "food_insecurity": {{
+    "present": false,
+    "reasoning": "No issues with food.",
+    "z_code": []
+  }},
+  "lack_of_transportation": {{
+    "present": false,
+    "reasoning": "No mention of transportation issues.",
+    "z_code": []
+  }},
+  "financial_hardship": {{
+    "present": false,
+    "reasoning": "No issues with finances.",
+    "z_code": []
+  }},
+  "domestic_violence": {{
+    "present": false,
+    "reasoning": "No mention of violence.",
+    "z_code": []
+  }},
+  "language_barriers": {{
+    "present": true,
+    "reasoning": "Patient is accompanied by daughter to help translate.",
+    "z_code": ["Z55.8"]
+  }},
+  "low_health_literacy": {{
+    "present": true,
+    "reasoning": "Patient has difficulty understanding medication instructions.",
+    "z_code": ["Z55.8"]
+  }}
+}}
+
+Example 3:
+Clinical note:
+"Patient denies any social needs. Lives alone, manages own finances, and has reliable transportation."
+
+Output:
+{{
+  "housing_instability": {{
+    "present": false,
+    "reasoning": "No mention of housing issues.",
+    "z_code": []
+  }},
+  "food_insecurity": {{
+    "present": false,
+    "reasoning": "No mention of food insecurity.",
+    "z_code": []
+  }},
+  "lack_of_transportation": {{
+    "present": false,
+    "reasoning": "Patient has reliable transportation.",
+    "z_code": []
+  }},
+  "financial_hardship": {{
+    "present": false,
+    "reasoning": "Manages own finances.",
+    "z_code": []
+  }},
+  "domestic_violence": {{
+    "present": false,
+    "reasoning": "No mention of violence.",
+    "z_code": []
+  }},
+  "language_barriers": {{
+    "present": false,
+    "reasoning": "No mention of language barriers.",
+    "z_code": []
+  }},
+  "low_health_literacy": {{
+    "present": false,
+    "reasoning": "No mention of health literacy.",
+    "z_code": []
+  }}
+}}
+
+Now, given the following clinical note, extract the SDOH risk factors and return only the JSON object using the specified schema.
+
+Clinical note: {clinical_note}

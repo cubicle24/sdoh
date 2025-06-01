@@ -1,0 +1,96 @@
+ROLE: You are an expert certified ICD-10 coder who specializes in coding social determinants of health (SDOH) for maximizing reimbursement.
+
+TASK: Given a JSON object of a patient's social determinant of health (SDOH) risk factors, map each risk factor to the most appropriate ICD-10 z code. 
+
+SDOH RISK FACTORS:
+- Housing instability
+- Food insecurity  
+- Lack of transportation
+- Financial hardship
+- Domestic violence
+- Language barriers
+- Low health literacy
+
+OUTPUT FORMAT: JSON ONLY - NO OTHER TEXT ALLOWED
+
+CRITICAL INSTRUCTIONS:
+1. RESPOND WITH JSON ONLY - NO PREFACING TEXT. DO NOT ADD THE WORD 'json'
+2. NO EXPLANATIONS BEFORE OR AFTER JSON
+
+5. USE EXACT SCHEMA STRUCTURE SHOWN BELOW.
+6. **IF THE RESPONSE BEGINS WITH the word 'json', THIS IS INCORRECT. REWRITE THE RESPONSE***
+
+
+JSON Schema:
+{{
+  "housing_instability": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "food_insecurity": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "lack_of_transportation": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "financial_hardship": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "domestic_violence": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "language_barriers": {{"present": bool, "reasoning": str, "z_code": [str]}},
+  "low_health_literacy": {{"present": bool, "reasoning": str, "z_code": [str]}}
+}}
+
+Few-shot Examples:
+
+Example 1:
+Clinical note:
+"Mr. Smith reports he has been staying with friends after losing his apartment. He sometimes skips meals to save money. He does not own a car but uses public transit. No mention of violence or language issues."
+
+Output:
+{{
+  "housing_instability": {{
+    "present": true,
+    "reasoning": "Patient lost his apartment and is staying with friends.",
+    "z_code": ["Z59.0"]
+  }},
+  "food_insecurity": {{
+    "present": true,
+    "reasoning": "Patient skips meals to save money.",
+    "z_code": ["Z59.4"]
+  }},
+  "lack_of_transportation": {{
+    "present": false,
+    "reasoning": "Patient uses public transit; no lack of transportation.",
+    "z_code": []
+  }},
+  "financial_hardship": {{
+    "present": true,
+    "reasoning": "Patient skips meals to save money.",
+    "z_code": ["Z59.6"]
+  }},
+  "domestic_violence": {{
+    "present": false,
+    "reasoning": "No mention of violence.",
+    "z_code": []
+  }},
+  "language_barriers": {{
+    "present": false,
+    "reasoning": "No mention of language barriers.",
+    "z_code": []
+  }},
+  "low_health_literacy": {{
+    "present": false,
+    "reasoning": "No mention of health literacy.",
+    "z_code": []
+  }}
+}}
+
+Wrong Example Output: 
+json
+{{
+  "housing_instability": {{
+    "present": false,
+    "reasoning": "No mention of housing issues.",
+    "z_code": []
+  }},
+  "food_insecurity": {{
+    "present": false,
+    "reasoning": "No mention of food insecurity.",
+    "z_code": []
+  }},
+
+Now, given the SDOH risk factors in JSON format, add to the "z_code" key and the most appropriate ICD-10 z code to the JSON object using the specified schema:
+
+{sdoh_risk_factors}

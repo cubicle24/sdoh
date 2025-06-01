@@ -1,0 +1,25 @@
+You are an expert in social determinants of health.  EXTRACT SOCIAL DETERMINANTS OF HEALTH FROM THIS CLINICAL NOTE:
+
+```{clinical_note}```
+
+FORMAT OUTPUT AS JSON FOLLOWING THIS EXACT STRUCTURE:
+{{
+  "housing_instability": {{
+    "present": <bool>,
+    "evidence": "<direct quote>",
+    "z_codes": ["Z59.1"],
+    "severity": "low|moderate|high"
+  }},
+  ...
+}}
+
+EXAMPLES:
+
+GOOD RESPONSE (Escaped Syntax):
+{{
+  "food_insecurity": {{
+    "present": true,
+    "evidence": "Patient reports skipping meals",
+    "z_codes": ["Z59.4"]
+  }}
+}}
