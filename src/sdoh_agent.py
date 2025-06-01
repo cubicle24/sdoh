@@ -1,8 +1,3 @@
-#this is an autonomous agent that scans clinical notes and finds patients who are at risk for:
-#the most common icd10 z codes: 	
-# Housing instability, Food insecurity, Lack of transportation, Financial hardship
-# Domestic violence, Language barriers, Low health literacy
-# The agent will automatically recommend the appropriate interventions for each patient
 from hmac import new
 from langgraph.graph import StateGraph
 from langchain_core.runnables import RunnableLambda
