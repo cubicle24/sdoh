@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from pprint import pprint
+from social_services_tools import SOCIAL_SERVICES_TOOLS
 
 
 class SDOHRiskFactor(TypedDict):
@@ -45,26 +46,113 @@ def load_prompt(prompt_file_path: str, input_vars: List[str]) -> str:
     template = PromptTemplate(template=prompt_string, input_variables=input_vars)
     return template
 
-
 def call_llm(prompt: PromptTemplate, input_values: Dict) -> str:
     """Call the LLM with a Langchain PromptTemplate and return the response"""
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    if not google_api_key:
+        raise ValueError("GOOGLE_API_KEY environment variable is not found.")
+
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", 
+    temperature=0.0, 
+    google_api_key=google_api_key)
+    chain = prompt | llm
+    response = chain.invoke(input_values).content
+
+    try:
+        print(f"call LLM response: {response}")
+        return JSON.loads(response)#should be valid JS
+    except json.JSONDecodeError as e:
+        raise ValueError(f"error calling LLM: {e}. Response: {response}")
+    
+
+
+def call_llm_with_tools(prompt: PromptTemplate, input_values: Dict, tools_list: List = None) -> str:
+    """Call the LLM with a Langchain PromptTemplate and return the response. LLM decides whether or not to use tools"""
 
     google_api_key = os.getenv("GOOGLE_API_KEY")
     if not google_api_key:
         raise ValueError("GOOGLE_API_KEY environment variable is not found.")
+        
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", 
     temperature=0.0, 
     google_api_key=google_api_key)
 
-    chain = prompt | llm 
-    response = chain.invoke(input_values).content
-    print(f"call LLM response: {response}")
+    if tools_list:
+        llm = llm.bind(tools=tools_list)
 
-    #check that response should be valid json
+    chain = prompt | llm 
+    response = chain.invoke(input_values)
+
+
+    #response is no longer JSON, response.content is tool_calls
+    if hasattr(response, "tool_calls") and response.tool_calls:
+        print(f"llm has decided to call these tools: {response.tool_calls}")
+        #example tool_calls:     tool_calls=[
+        # {
+        #     'name': 'get_patient_zipcode',
+        #     'args': {},
+        #     'id': 'call_abc123'
+        # }
+    # ],
+        #you still have to make it call the tools
+        #store the responses of the tool calls
+        tool_call_responses = []
+        for tool_call in response.tool_calls:
+            print(f"executing tool: {tool_call['name']} with args: {tool_call['args']}")
+
+            #first find the tool
+            tool_function = None #the function itself
+            for tool in tools_list:
+                if tool.name == tool_call['name']:
+                    tool_function = tool
+                    break#found the tool
+            if tool_function:
+                try:
+                    response = tool_function.invoke(tool_call['args'])#execute it
+                    tool_call_responses.append({"tool_call_id": tool_call['id'],"result" : response,'status': "success"})
+                    print(f"tool response: {response}")
+                except Exception as e:
+                    print(f"error calling tool: {e}")
+                    tool_call_responses.append({"tool_call_id": tool_call['id'],"result" : f"error with response when calling {tool_call['name']}: {e}",'status': "error"})
+            else:
+                print(f"a tool wanted to be called but not found in tools list--hallucination?: {tool_call['name']}")
+                tool_call_responses.append({"tool_call_id": tool_call['id'],"result" : f"error calling tool: {tool_call['name']} not found in tools list","status": "not_found"})
+        
+        chat_history = []
+        chat_history.append(HumanMessage(content=prompt.format(**input_values)))
+        chat_history.append(response)#the initial response is an AIMessage
+
+        #tool_results = [
+    #     {
+    #         'tool_call_id': 'call_abc123',  # Matches the original tool call
+    #         'result': 'Weather is 72°F',     # What the tool returned
+    #         'status': 'success'              # success/error/not_found
+    #     },
+    #     {
+    #         'tool_call_id': 'call_def456',
+    #         'result': 'Tool crashed: Connection timeout',
+    #         'status': 'error'
+    #     }
+    # ]
+    
+        for tool_call_response in tool_call_responses:
+            if not isinstance(tool_call_response, dict) or 'tool_call_id' not in tool_call_response:
+                raise ValueError(f"tool call response with wrong structure. I don't make the rules. It Must be a dict and have a tool_call_id: {tool_call_response}")
+
+            tool_call_response_str = str(tool_call_response['result'])#ToolMessages and LLMs want text strings
+            chat_history.append(ToolMessage(content=tool_call_response_str, tool_call_id=tool_call_response['tool_call_id']))
+        
+        final_response = llm.invoke(chat_history).content
+        
+    else:#no tools called for, so just return the regular response (won't have tool_calls)
+        print(f"llm has decided not to call any tools, just returning response: {response.content}")
+        final_response = response.content
     try:
-        return json.loads(response)
+        return json.loads(final_response)
     except json.JSONDecodeError as e:
-        raise ValueError(f"error calling LLM: {e}. Response: {response}")
+        print(f"couldn't parse {final_response} as json: {str(e)}")
+        raise ValueError(f"LLM returned invalid JSON: {e}. Response: {response_content}")
+
 
 def extract_sdoh_risk_factors(state: AgentState) -> AgentState:
     """Extract social risk factors from a note"""
