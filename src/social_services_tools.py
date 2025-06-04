@@ -1,5 +1,5 @@
-from typing import Dict
-
+from typing import Dict, List, Any
+from langchain.tools import tool
 
 @tool
 def search_social_services(zipcode: str, service_category: str, radius: int) -> Dict[str, Any]:
@@ -13,7 +13,7 @@ def search_social_services(zipcode: str, service_category: str, radius: int) -> 
     Returns:
         Dict[str, Any]: A dictionary containing the search results.
     """
-    neighborhood_resources = Dict()
+    neighborhood_resources = {}
     return neighborhood_resources
 
 @tool
@@ -24,9 +24,9 @@ def get_patient_zipcode() -> str:
         str: the zipcode of the patient.
     """
 
-    zip = "98029"
+    zip = "The patient's zipcode is 98029"
     if len(zip) != 5 or not zip.isdigit():
-        return "10001"
+        return "The patient's zipcode is 10001"
     return zip
 
 
