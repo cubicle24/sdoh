@@ -201,6 +201,10 @@ def map_to_z_codes(state: AgentState) -> AgentState:
     print(f"State after Extracting z codes: {new_state}")
     return new_state
 
+def get_zipcode(state: AgentState) -> AgentState:
+    """Get the zipcode of the patient and adds it to the state"""
+
+
 
 def recommend_interventions(state: AgentState) -> AgentState:
     """Recommend interventions for each social risk factor"""
@@ -271,11 +275,21 @@ def build_agent(state: AgentState):
     graph = StateGraph(AgentState)
     graph.add_node("extract_sdoh_risk_factors", audited_node_factory(extract_sdoh_risk_factors,"extract_sdoh_risk_factors"))
     graph.add_node("map_to_z_codes", audited_node_factory(map_to_z_codes,"map_to_z_codes"))
+    graph.add_node("get_zipcode", audited_node_factory(get_zipcode,"get_zipcode"))
+    #router
+    #search services
+    graph.add_node("search_social_services", audited_node_factory(search_social_services,"search_social_services"))
     graph.add_node("recommend_interventions", audited_node_factory(recommend_interventions,"recommend_interventions"))
     graph.add_node("end", audited_node_factory(end_processing,"end"))
 
     graph.add_edge("extract_sdoh_risk_factors", "map_to_z_codes")
-    graph.add_edge("map_to_z_codes", "recommend_interventions")
+    graph.add_edge("map_to_z_codes", "get_zipcode")
+    graph.add_conditional_edges("get_zipcode",zipcode_success_router, 
+    {
+        "has_zipcode": "search_social_services",
+        "no_zipcode": "recommend_interventions"
+    })
+    graph.add_edge("search_social_services", "recommend_interventions")
     graph.add_edge("recommend_interventions", "end")
 
     graph.set_entry_point("extract_sdoh_risk_factors")
