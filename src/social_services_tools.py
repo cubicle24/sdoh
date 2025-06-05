@@ -13,7 +13,57 @@ def search_social_services(zipcode: str, service_category: str, radius: int) -> 
     Returns:
         Dict[str, Any]: A dictionary containing the search results.
     """
-    neighborhood_resources = {}
+    #there are no free APIs for social services, so I am mocking this for the portfolio. If given access to a real API,
+    # we'd simply make an API call
+    neighborhood_resources = [
+  {
+    "name": "Issaquah Community Services",
+    "address": "180 East Sunset Way, Issaquah, WA 98027",
+    "phone": "425-837-3125",
+    "website": "https://www.issaquahcommunityservices.org/",
+    "services": [
+      "Emergency rent assistance",
+      "Utility assistance"
+    ]
+  },
+  {
+    "name": "Issaquah Food & Clothing Bank",
+    "address": "179 1st Ave SE, Issaquah, WA 98027",
+    "phone": "425-392-4123",
+    "website": "https://issaquahfoodbank.org/",
+    "services": [
+      "Food assistance",
+      "Clothing bank",
+      "Hygiene and household necessities",
+      "Financial assistance in partnership with Issaquah Community Services"
+    ]
+  },
+  {
+    "name": "Hopelink",
+    "address": "11011 120th Ave NE, Kirkland, WA 98033",
+    "phone": "425-869-6000",
+    "website": "https://www.hopelink.org/",
+    "services": [
+      "Food banks",
+      "Energy assistance",
+      "Affordable housing",
+      "Family development programs",
+      "Transportation services",
+      "Adult education programs"
+    ]
+  },
+  {
+    "name": "Salvation Army Eastside Corps",
+    "address": "911 164th Ave NE, Bellevue, WA 98008",
+    "phone": "425-452-7300",
+    "website": "https://bellevue.salvationarmy.org/",
+    "services": [
+      "Emergency food assistance",
+      "Utility assistance",
+      "Domestic violence community advocacy program"
+    ]
+  }
+]
     return neighborhood_resources
 
 @tool
@@ -24,9 +74,7 @@ def get_patient_zipcode() -> str:
         str: the zipcode of the patient.
     """
 
-    zip = "The patient's zipcode is 98029"
-    if len(zip) != 5 or not zip.isdigit():
-        return "The patient's zipcode is 10001"
+    zip = "98029"
     return zip
 
 

@@ -12,10 +12,12 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import RunnableLambda
 import json
 from typing import Dict, List, TypedDict, Callable, Any
-import os
+import os, re
 from pathlib import Path
 from datetime import datetime
 from pprint import pprint
+
+from pydantic.v1.typing import AnyArgTCallable
 from social_services_tools import SOCIAL_SERVICES_TOOLS
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
@@ -53,129 +55,70 @@ def load_prompt(prompt_file_path: str, input_vars: List[str]) -> str:
     prompt_string = Path(prompt_file_path).read_text()
     template = PromptTemplate(template=prompt_string, input_variables=input_vars)
     return template
-
-
-def call_llm(prompt: PromptTemplate, input_values: Dict) -> str:
-    """Call the LLM with a Langchain PromptTemplate and return the response"""
-    # google_api_key = os.getenv("GOOGLE_API_KEY")
-    # if not google_api_key:
-    #     raise ValueError("GOOGLE_API_KEY environment variable is not found.")
-
-    # llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", 
-    # temperature=0.0, 
-    # google_api_key=google_api_key)
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, openai_api_key=os.getenv("OPENAI_API_KEY"))
-    chain = prompt | llm
-    response = chain.invoke(input_values).content
-
-    try:
-        print(f"call LLM response: {response}")
-        return json.loads(response)#should be valid JS
-    except json.JSONDecodeError as e:
-        raise ValueError(f"error calling LLM: {e}. Response: {response}")
     
 
-def call_llm_with_tools(prompt: PromptTemplate, input_values: Dict, tools_list: List = None) -> str:
-    """Call the LLM with a Langchain PromptTemplate and return the response. LLM decides whether or not to use tools"""
-
-    # google_api_key = os.getenv("GOOGLE_API_KEY")
-    # if not google_api_key:
-    #     raise ValueError("GOOGLE_API_KEY environment variable is not found.")
-        
-    # llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-05-20", 
-    # temperature=0.0, 
-    # google_api_key=google_api_key)
-
+def call_llm_with_tools(prompt: PromptTemplate, input_values: Dict, tools_list: List = None) -> Dict[str, Any]:
+    """Calls the LLM (with or without tools) and returns the response (always a dict)"""
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0, openai_api_key=os.getenv("OPENAI_API_KEY"))
+    if not tools_list:
+        response = (prompt | llm).invoke(input_values)
+        return _parse_response(response.content)
 
-    if tools_list:
-        converted_tools = [convert_to_openai_tool(tool) for tool in tools_list]  # <-- Official method
-        print(f"DEBUG: Converted tools: {converted_tools}\n\n")
-
-        llm = llm.bind(tools=converted_tools)
-        chain = prompt | llm 
-        response = chain.invoke(input_values)
-        print(f"DEBUG: Initial response: {response}\n\n")
-        print(f"DEBUG: Response content: '{response.content}\n\n'")
-        print(f"DEBUG: Has tool_calls: {hasattr(response, 'tool_calls')}\n\n")
-        # response = llm.invoke([HumanMessage(content=prompt.format(**input_values))])
-
-
-    #response is no longer JSON, response.content is tool_calls
-    if hasattr(response, "tool_calls") and response.tool_calls:
-        print(f"llm has decided to call these tools: {response.tool_calls}\n\n")
-        #example tool_calls:     tool_calls=[
-        # {
-        #     'name': 'get_patient_zipcode',
-        #     'args': {},
-        #     'id': 'call_abc123'
-        # }
-    # ],
-        #you still have to make it call the tools
-        #store the responses of the tool calls
-        tool_call_responses = []
-        for tool_call in response.tool_calls:
-            print(f"executing tool: {tool_call['name']} with args: {tool_call['args']}\n\n")
-
-            #first find the tool
-            tool_function = None #the function itself
-            for tool in tools_list:
-                if tool.name == tool_call['name']:
-                    tool_function = tool
-                    break#found the tool
-            if tool_function:
-                try:
-                    tool_result = tool_function.invoke(tool_call['args'])#execute it
-                    tool_call_responses.append({"tool_call_id": tool_call['id'],"result" : tool_result,'status': "success"})
-                    print(f"tool response: {tool_result}")
-                except Exception as e:
-                    print(f"error calling tool: {e}")
-                    tool_call_responses.append({"tool_call_id": tool_call['id'],"result" : f"error with response when calling {tool_call['name']}: {e}",'status': "error"})
-            else:
-                print(f"a tool wanted to be called but not found in tools list--hallucination?: {tool_call['name']}")
-                tool_call_responses.append({"tool_call_id": tool_call['id'],"result" : f"error calling tool: {tool_call['name']} not found in tools list","status": "not_found"})
-        
-        chat_history = []
-        chat_history.append(HumanMessage(content=prompt.format(**input_values)))
-        chat_history.append(response)#this response is an AIMessage
-        #tool_results = [
-    #     {
-    #         'tool_call_id': 'call_abc123',  # Matches the original tool call
-    #         'result': 'Weather is 72°F',     # What the tool returned
-    #         'status': 'success'              # success/error/not_found
-    #     },
-    #     {
-    #         'tool_call_id': 'call_def456',
-    #         'result': 'Tool crashed: Connection timeout',
-    #         'status': 'error'
-    #     }
-    # ]
+    # Convert tools and bind to LLM
+    converted_tools = [convert_to_openai_tool(tool) for tool in tools_list]
+    llm_with_tools = llm.bind(tools=converted_tools)
     
-        for tool_call_response in tool_call_responses:
-            if not isinstance(tool_call_response, dict) or 'tool_call_id' not in tool_call_response:
-                raise ValueError(f"tool call response with wrong structure. I don't make the rules. It Must be a dict and have a tool_call_id: {tool_call_response}")
+    # LLM will decide which tools to use (contained in response)
+    response = (prompt | llm_with_tools).invoke(input_values)
 
-            tool_call_response_str = str(tool_call_response['result'])#ToolMessages and LLMs want text strings
-            chat_history.append(ToolMessage(content=tool_call_response_str, tool_call_id=tool_call_response['tool_call_id']))
+    #if wrong structure or no tools called 
+    if not (hasattr(response, "tool_calls") and response.tool_calls):
+        return _parse_response(response.content)
+
+    chat_history = [HumanMessage(content=prompt.format(**input_values)),response]
+
+    #there are tools to call, so execute them
+    tool_responses = _execute_tools(response.tool_calls, tools_list)
+    chat_history.extend(tool_responses)
+
+    final_response = llm.invoke(chat_history)
+    return _parse_response(final_response.content)
+
+
+def _execute_tools(tool_calls: List, tools_list: List) -> List[ToolMessage]:
+    """Execute tool calls and return ToolMessages"""
+    # Create tool lookup dict for O(1) access
+    tools_dict = {tool.name: tool for tool in tools_list}
+    tool_messages = []
+    
+    for tool_call in tool_calls:
+        tool_name = tool_call['name']
+        tool_function = tools_dict.get(tool_name)
+        
+        if not tool_function:
+            result = f"Error: Tool '{tool_name}' not found"
+        else:
+            try:
+                result = str(tool_function.invoke(tool_call['args']))
+            except Exception as e:
+                result = f"Error executing {tool_name}: {e}"
+        
+        tool_messages.append(
+            ToolMessage(content=result, tool_call_id=tool_call['id'])
+        )
+    
+    return tool_messages
   
-        final_instruction = HumanMessage(content="Use the tool results above to find social services for the patient's zipcode, if available.")
-        chat_history.append(final_instruction)
 
-        final_response = llm.invoke(chat_history).content
-        print(f"DEBUG##############final response obj: {final_response}\n\n")
-        print(f"DEBUG: Final response content: '{final_response.content}\n\n'")
-        if not final_response.content:
-            print("ERROR: LLM returned empty content!")
-            return {"error": "Empty LLM response"}
-
-    else:#no tools called for, so just return the regular response (won't have tool_calls)
-        print(f"llm has decided not to call any tools, just returning response: {response.content}")
-        final_response = response.content
+def _parse_response(content: str) -> Dict[str, Any]:
+    """Parses the response from the LLM into a JSON dict"""
+    content = content.strip()
+    if not content:
+        return {"error" : "Empty LLM Response, can not parse"}
     try:
-        return json.loads(final_response)
+        return json.loads(content)
     except json.JSONDecodeError as e:
-        print(f"couldn't parse {final_response} as json: {str(e)}")
-        raise ValueError(f"LLM returned invalid JSON: {e}. Response: {final_response}")
+        return {"error": f"Invalid JSON: {e}", "raw_content": content}
 
 
 def extract_sdoh_risk_factors(state: AgentState) -> AgentState:
@@ -184,10 +127,10 @@ def extract_sdoh_risk_factors(state: AgentState) -> AgentState:
     # prompt = load_prompt("../prompts/extract_sdoh_risk_factors.txt", ["clinical_note"])
     # prompt = load_prompt("../prompts/extract_sdoh_v2.txt", ["clinical_note"])
     prompt = load_prompt("../prompts/extract_sdoh_v3.txt", ["clinical_note"])
-    risk_factors = call_llm(prompt, {"clinical_note": clinical_note})
+    risk_factors = call_llm_with_tools(prompt, {"clinical_note": clinical_note}, None)
 
     new_state = {**state, "sdoh": risk_factors}
-    print(f"State after Extracted SDOH risk factors: {new_state}")
+    # print(f"State after Extracted SDOH risk factors: {new_state}")
     return new_state
 
 
@@ -195,15 +138,49 @@ def map_to_z_codes(state: AgentState) -> AgentState:
     """Map social risk factors to ICD10 Z codes"""
     sdoh_risk_factors = state["sdoh"]
     prompt = load_prompt("../prompts/extract_zcodes_v1.txt", ["sdoh_risk_factors"])
-    z_codes = call_llm(prompt, {"sdoh_risk_factors": sdoh_risk_factors})
+    z_codes = call_llm_with_tools(prompt, {"sdoh_risk_factors": sdoh_risk_factors}, None)
 
     new_state = {**state, "sdoh": z_codes}
-    print(f"State after Extracting z codes: {new_state}")
+    # print(f"State after Extracting z codes: {new_state}")
     return new_state
 
 def get_zipcode(state: AgentState) -> AgentState:
     """Get the zipcode of the patient and adds it to the state"""
+    try:
+        prompt_text = "Get the patient's zipcode. You may use the available tools you have to determine it.  Return just the zipcode as a string and no extra text."
+        prompt = PromptTemplate(template=prompt_text,input_variables=None)
+        response = call_llm_with_tools(prompt, {}, SOCIAL_SERVICES_TOOLS)
+        print(f"\nDEBUG: get_zipcode response: {response}\n")
+        zipcode = None
+        if len(response) == 5:
+            zipcode = response
+        return {**state, "zipcode": zipcode, "zipcode_tool_called": True}
+    except Exception as e:
+        print(f"Get zipcode node failed to get_zipcode: {e}")
+        return {**state, "zipcode": None, "zipcode_tool_called": False}   
 
+def search_social_services(state: AgentState) -> AgentState:
+    """Search for social services based on the patient's zipcode"""
+    try:
+        prompt_text = """Search for local social services based on the patient's zipcode, which is {zipcode}. You may use the available tools to look for available services.
+        Return just the list of social services as a JSON object and no extra text. Do not start the response with the word 'json'"""
+        prompt = PromptTemplate(template=prompt_text,input_variables=["zipcode"])
+        response = call_llm_with_tools(prompt, {"zipcode": state["zipcode"]}, SOCIAL_SERVICES_TOOLS)
+        print(f"DEBUG: search_social_services response: {response}\n")
+        return {**state, "social_services": response, "social_services_tool_called" : True}   
+    except Exception as e:
+        print(f"Error in search_social_services: {e}")
+        return {**state, "social_services": None, "social_services_tool_called" : False}   
+
+def zipcode_success_router(state: AgentState) -> str:
+    """Determines if the zipcode was successfully extracted"""
+    zipcode = state.get("zipcode")
+    if zipcode:
+        valid_zip = bool(re.match(r'^\d{5}(\d{4})?$', zipcode))
+        if valid_zip:
+            return "search_social_services"
+    else:
+        return "recommend_interventions"
 
 
 def recommend_interventions(state: AgentState) -> AgentState:
@@ -237,7 +214,7 @@ def audited_node_factory(node_func: Callable, node_name: str, ) -> Callable:
     def audited_node(state: AgentState) -> AgentState:
         """This actually makes the node with the auditing functionality"""
         result = node_func(state)
-        print(f"Executed node {node_name} with result: {result}")
+        print(f"Executed node {node_name} with result: {result}\n\n")
         if "audit_trail" not in state:
             new_state= {**state, "audit_trail": []}
         audit_trail = new_state["audit_trail"]
@@ -276,8 +253,6 @@ def build_agent(state: AgentState):
     graph.add_node("extract_sdoh_risk_factors", audited_node_factory(extract_sdoh_risk_factors,"extract_sdoh_risk_factors"))
     graph.add_node("map_to_z_codes", audited_node_factory(map_to_z_codes,"map_to_z_codes"))
     graph.add_node("get_zipcode", audited_node_factory(get_zipcode,"get_zipcode"))
-    #router
-    #search services
     graph.add_node("search_social_services", audited_node_factory(search_social_services,"search_social_services"))
     graph.add_node("recommend_interventions", audited_node_factory(recommend_interventions,"recommend_interventions"))
     graph.add_node("end", audited_node_factory(end_processing,"end"))
@@ -286,8 +261,8 @@ def build_agent(state: AgentState):
     graph.add_edge("map_to_z_codes", "get_zipcode")
     graph.add_conditional_edges("get_zipcode",zipcode_success_router, 
     {
-        "has_zipcode": "search_social_services",
-        "no_zipcode": "recommend_interventions"
+        "search_social_services": "search_social_services",
+        "recommend_interventions": "recommend_interventions"
     })
     graph.add_edge("search_social_services", "recommend_interventions")
     graph.add_edge("recommend_interventions", "end")
