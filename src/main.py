@@ -12,7 +12,8 @@ def main():
 
     #load note:
     # note = open("../clinical_notes_repository/note_1_medicine_CHF.txt").read()
-    note = open("../clinical_notes_repository/easy_note.txt").read()
+    # note = open("../clinical_notes_repository/easy_note.txt").read()
+    note = open("../clinical_notes_repository/psychiatric_note.txt").read()
     start_state: AgentState = {
         "note": note,
         "sdoh": {},

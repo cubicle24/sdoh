@@ -37,7 +37,6 @@ class AgentState(TypedDict):
     sdoh : Dict[str, SDOHRiskFactor]
     intervention: Dict[str, str]
     retry_count: int
-    knows_zipcode: bool
     zipcode_tool_called : bool
     zipcode : str
     social_services : Dict[str, Any]
@@ -165,14 +164,10 @@ def get_zipcode(state: AgentState) -> AgentState:
 def search_social_services(state: AgentState) -> AgentState:
     """Search for social services based on the patient's zipcode"""
     try:
-        print(f"DEBUG: search social_services is called!\n")
         prompt_text = """Search for local social services based on the patient's zipcode, which is {zipcode}. You may use the available tools to look for available services.
         Return just the list of social services as a JSON object and no extra text. Do not start the response with the word 'json'"""
         prompt = PromptTemplate(template=prompt_text,input_variables=["zipcode"])
         response = call_llm_with_tools(prompt, {"zipcode": state["zipcode"]}, SOCIAL_SERVICES_TOOLS)
-        print(f"DEBUG: search_social_services response: {response}\n")
-        print(f"DEBUG: response type: {type(response)}, keys: {response.keys() if isinstance(response, dict) else 'Not a dict'}\n")
-        print(f" DEBUG:########## response['social siervices']: {response['social_services']}\n")
         return {**state, "social_services": response['social_services'], "social_services_tool_called" : True}   
     except Exception as e:
         print(f"Error in search_social_services: {e}")
@@ -194,18 +189,12 @@ def zipcode_success_router(state: AgentState) -> str:
 
 def recommend_interventions(state: AgentState) -> AgentState:
     """Recommend interventions for each social risk factor"""
-    print(f"DEBUG: ENTRY - Full state keys: {list(state.keys())}")
-    print(f"DEBUG: ENTRY - social_services value: {state.get('social_services', 'KEY_MISSING')}")
-    print(f"DEBUG: ENTRY - social_services_tool_called: {state.get('social_services_tool_called', 'KEY_MISSING')}")
     sdoh_risk_factors = state.get("sdoh", {})
     social_services = state.get("social_services", {})
-    print(f"DEBUG ### 196: in recommend interventions entry state: {state}\n")
 
     prompt = load_prompt("../prompts/recommend_interventions_v3.txt", ["sdoh_risk_factors","social_services"])
-    print(f"DEBUG: in recommend social_services: {social_services}\n")
     try:
         response = call_llm_with_tools(prompt, {"sdoh_risk_factors": sdoh_risk_factors,"social_services": social_services}, None)
-        print(f"DEBUG: recommend interventions response: {response}\n\n")
         return {**state, "sdoh": response, "social_services" : social_services}   
     except Exception as e:
         print(f"Error in recommending interventions: {e}\n")
@@ -214,7 +203,6 @@ def recommend_interventions(state: AgentState) -> AgentState:
 
 def end_processing(state: AgentState) -> AgentState:
     """Final node that marks the completion of SDOH processing"""
-    
     print("Graph completed")
     return state
 
@@ -224,7 +212,6 @@ def audited_node_factory(node_func: Callable, node_name: str, ) -> Callable:
     def audited_node(state: AgentState) -> AgentState:
         """This actually makes the node with the auditing functionality"""
         result = node_func(state)
-        print(f"Executed node {node_name} with result: {result}\n\n")
         if "audit_trail" not in state:
             new_state = {**state, "audit_trail": []}
         else:
