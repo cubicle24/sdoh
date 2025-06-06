@@ -53,7 +53,7 @@ app.add_middleware(
 )
 
 # Request and response models
-class ClinicalNoteRequest(BaseModel):
+class ExtractSDOHRequest(BaseModel):
     clinical_note: str = Field(
         ..., 
         description="Patient clinical note text",
@@ -82,8 +82,8 @@ class RecommendationItem(BaseModel):
     topic: str
     pub_date: str
 
-class RecommendationResponse(BaseModel):
-    patient_data: Dict[str, Any]
+class SDOHResponse(BaseModel):
+    patient_data: Dict[str, Any]˜
     recommendations: Dict[str, Any]
     
     class Config:
@@ -182,7 +182,7 @@ async def get_recommendations(request: ClinicalNoteRequest):
 @app.get("/")
 async def health_check():
     """Tests to verify the API is running."""
-    return {"status": "hello", "time": time.time()}
+    return {"status": "hello sdoh api is up", "time": time.time()}
 
 # Main entry point
 if __name__ == "__main__":
