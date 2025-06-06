@@ -1,27 +1,15 @@
-TASK: Given a JSON object of a patient's social determinant of health (SDOH) risk factors and ICD-10 z codes, use the available tools to recommend the most appropriate interventions for only the SDOH risk factor(s) that are present.
-
-WORKFLOW:
-1. If you need the patient's location for local service recommendations, call get_patient_zipcode first
-2. Use search_social_services to find relevant local services based on the zipcode
-3. After gathering all necessary information from tools, provide your final response as JSON
+TASK: Given a JSON object of a patient's social determinant of health (SDOH) risk factors and another JSON object of social services,
+recommend the most appropriate interventions for only the SDOH risk factor(s) that are present. Output these as an "interventions" key: value pair.
+If a JSON object of social services is not available, then recommend generalized, evidence-based interventions that you think would help the SDOH risk factors in the patient.
 
 SDOH RISK FACTORS:
-- Housing instability
-- Food insecurity  
-- Lack of transportation
-- Financial hardship
-- Domestic violence
-- Language barriers
-- Low health literacy
+{sdoh_risk_factors}
 
-AVAILABLE TOOLS:
-1. search_social_services -- looks for local services for housing, food, financial assistance, etc. 
-2. get_patient_zipcode -- gets the patient's zipcode to use when searching for local social services
-
-IMPORTANT: After calling any tools and receiving their results, incorporate that information into your intervention recommendations and then provide your final response in the JSON format below.
+SOCIAL SERVICES:
+{social_services}
 
 OUTPUT FORMAT: 
-Your final response must be valid JSON following this exact schema:
+Your final response must be valid JSON following this exact schema, with no extra text nor the preface word 'json':
 
 {{
   "housing_instability": {{present": bool, "reasoning": str, "z_code": [str],"interventions": [str]}},
@@ -32,12 +20,3 @@ Your final response must be valid JSON following this exact schema:
   "language_barriers": {{"present": bool, "reasoning": str, "z_code": [str], "interventions": [str]}},
   "low_health_literacy": {{"present": bool, "reasoning": str, "z_code": [str],"interventions": [str]}}
 }}
-
-Example with tool usage:
-If housing_instability is present, you might:
-1. Call get_patient_zipcode to get "98029"
-2. Call search_social_services with zipcode 98029 and service type "housing"
-3. Use the results to populate specific local housing resources in the interventions array
-
-Input data to process:
-{sdoh_risk_factors}
