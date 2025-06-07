@@ -14,7 +14,7 @@ from typing import Dict, Any, Optional
 
 from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, validator
 import uvicorn
 from sdoh_agent import run_agent, AgentState
@@ -30,28 +30,22 @@ logger = logging.getLogger("sdoh_api")
 
 # Initialize the SDOH agent
 try:
-    # note = open("../clinical_notes_repository/note_1_medicine_CHF.txt").read()
-    # note = open("../clinical_notes_repository/easy_note.txt").read()
-    note = open("../clinical_notes_repository/psychiatric_note.txt").read()
     start_state: AgentState = {
-        "note": note,
-        "sdoh": {},
-        "intervention": {},
-        "retry_count" : 0,
-        "zipcode_tool_called" : False,
-        "zipcode" : "",
-        "social_services" : [],
-        "audit_trail" : []
+    "note": note,
+    "sdoh": {},
+    "intervention": {},
+    "retry_count" : 0,
+    "zipcode_tool_called" : False,
+    "zipcode" : "",
+    "social_services" : [],
+    "audit_trail" : []
     }
-
-    # end_state = run_agent(note, start_state)
-    # pprint(f"Final state: {end_state}")
-    # logger.info("Started sdoh agent")
+    graph = build_agent(start_state)
 except Exception as e:
-    logger.error(f"Failed to read in note, couldn't start SDOH agent: {str(e)}")
-    raise
+    logger.error(f"Failed to initialize SDOH agent: {str(e)}")
+    raise HTTPException(status_code=500, detail="Sorry, our fault. Could not start SDOH agent")
 
-# Create FastAPI app
+
 app = FastAPI(
     title="Clinical Guidelines API",
     description="API for generating screening recommendations based on clinical notes",
@@ -69,7 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class NoteRequest(BaseModel):
+class ClinicalNoteRequest(BaseModel):
     note: str = Field(
         ...,
         description="Patient clinical note text",
@@ -94,7 +88,7 @@ class SDOHResponse(BaseModel):
                 "food_insecurity": {"present": false, "reasoning": "No mention of food insecurity.", "z_code": [], "interventions": []},
                 "lack_of_transportation": {"present": false, "reasoning": "No mention of transportation issues.", "z_code": [], "interventions": []},
                 "financial_hardship": {"present": false, "reasoning": "No mention of financial issues.", "z_code": [], "interventions": []},
-                "domestic_violence": {"present": true, "reasoning": "Patient reports hitting her husband.", "z_code": ["Z62.81"], "interventions": ["Contact the Domestic Violence Community Advocacy Program at Salvation Army Eastside Corps for support and resources.", "Consider counseling or therapy services specializing in domestic violence.", "Explore local shelters or safe houses if immediate safety is a concern."]},
+                "domestic_violence": {"present": true, "reasoning": "Patient reports being hit by her husband.", "z_code": ["Z62.81"], "interventions": ["Contact the Domestic Violence Community Advocacy Program at Salvation Army Eastside Corps for support and resources.", "Consider counseling or therapy services specializing in domestic violence.", "Explore local shelters or safe houses if immediate safety is a concern."]},
                 "language_barriers": {"present": false, "reasoning": "No mention of language barriers.", "z_code": [], "interventions": []},
                 "low_health_literacy": {"present": true, "reasoning": "Patient unable to specify therapy learnings.", "z_code": ["Z55.9"], "interventions": ["Provide educational materials in simpler language.", "Offer one-on-one health education sessions to improve understanding of health conditions and treatments.", "Utilize teach-back methods to ensure comprehension of health information."]}
             },
@@ -232,43 +226,33 @@ async def generic_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "An unexpected error occurred. Please try again later."}
+        content={"detail": "We're sorry, an unexpected internal server error happened. Please try again later."}
     )
 
 # API endpoints
 
-@app.post("/sdoh/run", response_model=RecommendationResponse)
-async def get_recommendations(request: ClinicalNoteRequest):
+@app.post("/sdoh/run_agent", response_model=SDOHResponse)
+async def parse_sdoh_and_make_recs(note: ClinicalNoteRequest) -> StreamingResponse:
     """
-    Generate screening recommendations based on a clinical note.
-    Returns patient data extracted from the note and recommended screening tests.
+    Parses a note and streams SDOH risk factors and makes recommendations.
+    Args:
+        request (ClinicalNoteRequest): the text of a clinical note.
+    Returns:
+        SDOHResponse: the patient's SDOH risk factors and recommended interventions.
     """
-    try:
-        logger.info("Processing recommendation request")
-        raw_response = guidelines_system.generate_recommendations({"clinical_note": request.clinical_note})
-        
-        # Parse the response if it's a string
-        if isinstance(raw_response["recommendations"], str):
-            try:
-                recommendations = json.loads(raw_response["recommendations"])
-                raw_response["recommendations"] = recommendations
-            except json.JSONDecodeError:
-                logger.error("Failed to parse LLM response as JSON")
-                logger.error(f"LLM response: {raw_response['recommendations']}")
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="LLM returned invalid JSON format"
-                )
-                
-        logger.info("Successfully generated recommendations")
-        return raw_response
-        
-    except Exception as e:
-        logger.error(f"Error generating recommendations: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Error generating recommendations: {str(e)}"
-        )
+    def event_generator():
+        for event in graph.stream(note, stream_mode="updates"):
+            sdoh_agent_messages = {
+                "step": event.get("name"),
+            }
+        yield f"data: {json.dumps(sdoh_agent_messages)}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "Access-Control-Allow-Origin": "*"}
+    )
+    
 
 @app.get("/")
 async def health_check():
@@ -280,7 +264,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     host = os.environ.get("HOST", "0.0.0.0")
     
-    logger.info(f"Health check called: Guidelines API server on {host}:{port}")
+    logger.info(f"Health check called: SDOH API server on {host}:{port}")
     uvicorn.run(
         "api:app", 
         host=host, 
