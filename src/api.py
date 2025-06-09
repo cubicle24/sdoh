@@ -153,27 +153,6 @@ class SDOHResponse(BaseModel):
                         "phone": "425-837-3125",
                         "website": "https://www.issaquahcommunityservices.org/",
                         "services": ["Emergency rent assistance", "Utility assistance"]
-                        },
-                        {
-                        "name": "Issaquah Food & Clothing Bank",
-                        "address": "179 1st Ave SE, Issaquah, WA 98027",
-                        "phone": "425-392-4123",
-                        "website": "https://issaquahfoodbank.org/",
-                        "services": ["Food assistance", "Clothing bank", "Hygiene and household necessities", "Financial assistance in partnership with Issaquah Community Services"]
-                        },
-                        {
-                        "name": "Hopelink",
-                        "address": "11011 120th Ave NE, Kirkland, WA 98033",
-                        "phone": "425-869-6000",
-                        "website": "https://www.hopelink.org/",
-                        "services": ["Food banks", "Energy assistance", "Affordable housing", "Family development programs", "Transportation services", "Adult education programs"]
-                        },
-                        {
-                        "name": "Salvation Army Eastside Corps",
-                        "address": "911 164th Ave NE, Bellevue, WA 98008",
-                        "phone": "425-452-7300",
-                        "website": "https://bellevue.salvationarmy.org/",
-                        "services": ["Emergency food assistance", "Utility assistance", "Domestic violence community advocacy program"]
                         }
                     ],
                     "social_services_tool_called": true
@@ -229,12 +208,20 @@ async def generic_exception_handler(request: Request, exc: Exception):
         content={"detail": "We're sorry, an unexpected internal server error happened. Please try again later."}
     )
 
-# API endpoints
+#user friendly messages when showing reasoning steps
+NODES_DICT = {
+    "extract_sdoh_risk_factors": "Finding SDOH risk factors",
+    "map_to_z_codes": "Matching SDOH risk factors to ICD-10 Z codes",
+    "get_zipcode": "Looking for patient's zipcode",
+    "search_social_services": "Searching for nearby social services",
+    "recommend_interventions": "Designing custom interventions for the patient",
+}
 
+# API endpoints
 @app.post("/sdoh/run_agent", response_model=SDOHResponse)
 async def parse_sdoh_and_make_recs(note: ClinicalNoteRequest) -> StreamingResponse:
     """
-    Parses a note and streams SDOH risk factors and makes recommendations.
+    Parses a note and streams its step by step reasoning as it extracts SDOH risk factors and makes recommendations.
     Args:
         request (ClinicalNoteRequest): the text of a clinical note.
     Returns:
@@ -242,9 +229,25 @@ async def parse_sdoh_and_make_recs(note: ClinicalNoteRequest) -> StreamingRespon
     """
     def event_generator():
         for event in graph.stream(note, stream_mode="updates"):
-            sdoh_agent_messages = {
-                "step": event.get("name"),
-            }
+            for node_name, updated_state in event.items():
+                if node_name == "extract_sdoh_risk_factors":
+                    sdoh_agent_messages = {}
+                    "identified these sdoh risk factors: housing instability, food insecurity"
+                elif node_name == "map_to_z_codes":
+                    sdoh_agent_messages = {
+                
+                    }
+                elif node_name == "get_zipcode":
+                    sdoh_agent_messages = {
+                        
+                    }
+                elif node_name == "search_social_services":
+                        sdoh_agent_messages = {
+                        }
+                elif node_name == "recommend_interventions":
+                    sdoh_agent_messages = {
+                        
+                    }
         yield f"data: {json.dumps(sdoh_agent_messages)}\n\n"
     
     return StreamingResponse(
