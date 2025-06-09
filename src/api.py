@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, validator
 import uvicorn
 from sdoh_agent import run_agent, AgentState
+from src import sdoh_agent
 
 
 # Configure logging
@@ -229,18 +230,48 @@ async def parse_sdoh_and_make_recs(note: ClinicalNoteRequest) -> StreamingRespon
     """
     def event_generator():
         for event in graph.stream(note, stream_mode="updates"):
+            sdoh_agent_messages = {}
+
             for node_name, updated_state in event.items():
                 if node_name == "extract_sdoh_risk_factors":
-                    sdoh_agent_messages = {}
-                    "identified these sdoh risk factors: housing instability, food insecurity"
+                    #building this structure
+                    # "risk_factors_present" :{
+                    #     "housing" :{
+                    #         "reasoning" : "Patient is homeless"
+                    #     },
+                    #     "food_insecurity" :{
+                    #         "reasoning" : "Patient is homeless"
+                    #     },
+                    # } 
+                    sdoh_agent_messages["step"] = NODES_DICT.get("extract_sdoh_risk_factors",node_name)
+                    risk_factors_present = {}
+                    if updated_state.get("sdoh",None):
+                        for risk_factor, risk_factor_data in updated_state.get("sdoh",{}).items():
+                            if isinstance(risk_factor_data, dict) and risk_factor_data.get("present",False):
+                                risk_factors_present[risk_factor] = {"reasoning": risk_factor_data.get("reasoning",None)}
+                        sdoh_agent_messages["risk_factors_present"] = risk_factors_present if risk_factors_present else None
+                    else:
+                        sdoh_agent_messages["risk_factors_present"] = None
                 elif node_name == "map_to_z_codes":
                     sdoh_agent_messages = {
-                
+                        "step" : NODES_DICT.get("map_to_z_codes",node_name),
+                        "z_codes" :{
+                            "housing" :{
+                                "z_code" : "Z62.81"
+        
+                            },
+                            "food_insecurity" :{
+                                "z_code" : "Z65.23"
+                            },
+                        } 
                     }
                 elif node_name == "get_zipcode":
-                    sdoh_agent_messages = {
-                        
-                    }
+                    sdoh_agent_messages = {}
+                    sdoh_agent_messages["step"] = NODES_DICT.get("get_zipcode",node_name)
+                    if updated_state.get("zipcode",None):
+                        sdoh_agent_messages["zipcode"] = updated_state.get("zipcode",None)
+                    else:
+                        sdoh_agent_messages["zipcode"] = None
                 elif node_name == "search_social_services":
                         sdoh_agent_messages = {
                         }
