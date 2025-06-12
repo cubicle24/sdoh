@@ -114,34 +114,6 @@ class SDOHResponse(BaseModel):
                 }
                 },
                 {
-                "step": "map_to_z_codes",
-                "timestamp": "2025-06-05T19:11:27.578729",
-                "changes": {
-                    "modified": {
-                    "sdoh": {
-                        "housing_instability": {"present": false, "reasoning": "No mention of housing issues.", "z_code": []},
-                        "food_insecurity": {"present": false, "reasoning": "No mention of food insecurity.", "z_code": []},
-                        "lack_of_transportation": {"present": false, "reasoning": "No mention of transportation issues.", "z_code": []},
-                        "financial_hardship": {"present": false, "reasoning": "No mention of financial issues.", "z_code": []},
-                        "domestic_violence": {"present": true, "reasoning": "Patient reports hitting her husband.", "z_code": ["Z62.81"]},
-                        "language_barriers": {"present": false, "reasoning": "No mention of language barriers.", "z_code": []},
-                        "low_health_literacy": {"present": true, "reasoning": "Patient unable to specify therapy learnings.", "z_code": ["Z55.9"]}
-                    }
-                    },
-                    "added": {},
-                    "removed": {}
-                }
-                },
-                {
-                "step": "get_zipcode",
-                "timestamp": "2025-06-05T19:11:28.406223",
-                "changes": {
-                    "modified": {},
-                    "added": {"zipcode": "98029", "zipcode_tool_called": true},
-                    "removed": {}
-                }
-                },
-                {
                 "step": "search_social_services",
                 "timestamp": "2025-06-05T19:11:37.789632",
                 "changes": {
@@ -154,29 +126,21 @@ class SDOHResponse(BaseModel):
                         "phone": "425-837-3125",
                         "website": "https://www.issaquahcommunityservices.org/",
                         "services": ["Emergency rent assistance", "Utility assistance"]
+<<<<<<< Updated upstream
                         }
+=======
+                        },
+                        {
+                        "name": "Hopelink",
+                        "address": "11011 120th Ave NE, Kirkland, WA 98033",
+                        "phone": "425-869-6000",
+                        "website": "https://www.hopelink.org/",
+                        "services": ["Food banks", "Energy assistance", "Affordable housing", "Family development programs", "Transportation services", "Adult education programs"]
+                        },
+>>>>>>> Stashed changes
                     ],
                     "social_services_tool_called": true
                     },
-                    "removed": {}
-                }
-                },
-                {
-                "step": "recommend_interventions",
-                "timestamp": "2025-06-05T19:11:44.001710",
-                "changes": {
-                    "modified": {
-                    "sdoh": {
-                        "housing_instability": {"present": false, "reasoning": "No mention of housing issues.", "z_code": [], "interventions": []},
-                        "food_insecurity": {"present": false, "reasoning": "No mention of food insecurity.", "z_code": [], "interventions": []},
-                        "lack_of_transportation": {"present": false, "reasoning": "No mention of transportation issues.", "z_code": [], "interventions": []},
-                        "financial_hardship": {"present": false, "reasoning": "No mention of financial issues.", "z_code": [], "interventions": []},
-                        "domestic_violence": {"present": true, "reasoning": "Patient reports hitting her husband.", "z_code": ["Z62.81"], "interventions": ["Contact the Domestic Violence Community Advocacy Program at Salvation Army Eastside Corps for support and resources.", "Consider counseling or therapy services specializing in domestic violence.", "Explore local shelters or safe houses if immediate safety is a concern."]},
-                        "language_barriers": {"present": false, "reasoning": "No mention of language barriers.", "z_code": [], "interventions": []},
-                        "low_health_literacy": {"present": true, "reasoning": "Patient unable to specify therapy learnings.", "z_code": ["Z55.9"], "interventions": ["Provide educational materials in simpler language.", "Offer one-on-one health education sessions to improve understanding of health conditions and treatments.", "Utilize teach-back methods to ensure comprehension of health information."]}
-                    }
-                    },
-                    "added": {},
                     "removed": {}
                 }
                 },
