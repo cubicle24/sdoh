@@ -127,8 +127,11 @@ class SDOHResponse(BaseModel):
                         "website": "https://www.issaquahcommunityservices.org/",
                         "services": ["Emergency rent assistance", "Utility assistance"]
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                         }
 =======
+=======
+>>>>>>> Stashed changes
                         },
                         {
                         "name": "Hopelink",
@@ -137,6 +140,9 @@ class SDOHResponse(BaseModel):
                         "website": "https://www.hopelink.org/",
                         "services": ["Food banks", "Energy assistance", "Affordable housing", "Family development programs", "Transportation services", "Adult education programs"]
                         },
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                     ],
                     "social_services_tool_called": true
