@@ -112,49 +112,7 @@ class SDOHResponse(BaseModel):
                     "added": {},
                     "removed": {}
                 }
-                },
-                {
-                "step": "search_social_services",
-                "timestamp": "2025-06-05T19:11:37.789632",
-                "changes": {
-                    "modified": {},
-                    "added": {
-                    "social_services": [
-                        {
-                        "name": "Issaquah Community Services",
-                        "address": "180 East Sunset Way, Issaquah, WA 98027",
-                        "phone": "425-837-3125",
-                        "website": "https://www.issaquahcommunityservices.org/",
-                        "services": ["Emergency rent assistance", "Utility assistance"]
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-                        }
-=======
-=======
->>>>>>> Stashed changes
-                        },
-                        {
-                        "name": "Hopelink",
-                        "address": "11011 120th Ave NE, Kirkland, WA 98033",
-                        "phone": "425-869-6000",
-                        "website": "https://www.hopelink.org/",
-                        "services": ["Food banks", "Energy assistance", "Affordable housing", "Family development programs", "Transportation services", "Adult education programs"]
-                        },
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-                    ],
-                    "social_services_tool_called": true
-                    },
-                    "removed": {}
-                }
-                },
-                {
-                "step": "end",
-                "timestamp": "2025-06-05T19:11:44.002158",
-                "changes": {"modified": {}, "added": {}, "removed": {}}
-                }
+                }    
             ]
             }
         }
