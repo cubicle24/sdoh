@@ -42,6 +42,7 @@ humanfriendly==10.0
 idna==3.10
 importlib_metadata==8.6.1
 importlib_resources==6.5.2
+iniconfig==2.1.0
 jiter==0.10.0
 jsonpatch==1.33
 jsonpointer==3.0.0
@@ -85,6 +86,7 @@ orjson==3.10.18
 ormsgpack==1.10.0
 overrides==7.7.0
 packaging==24.2
+pluggy==1.6.0
 posthog==4.2.0
 propcache==0.3.1
 proto-plus==1.26.1
@@ -97,6 +99,8 @@ pydantic_core==2.33.2
 Pygments==2.19.1
 PyPika==0.48.9
 pyproject_hooks==1.2.0
+pytest==8.4.0
+pytest-asyncio==1.0.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 PyYAML==6.0.2

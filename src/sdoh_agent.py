@@ -18,7 +18,7 @@ from datetime import datetime
 from pprint import pprint
 
 from pydantic.v1.typing import AnyArgTCallable
-from social_services_tools import SOCIAL_SERVICES_TOOLS
+from src.social_services_tools import SOCIAL_SERVICES_TOOLS
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langchain_openai import ChatOpenAI

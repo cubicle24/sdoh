@@ -10,15 +10,14 @@ import logging
 import json
 import os
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, validator
 import uvicorn
-from sdoh_agent import run_agent, AgentState
-from src import sdoh_agent
+from src.sdoh_agent import run_agent, AgentState, build_agent
 
 
 # Configure logging
@@ -32,7 +31,7 @@ logger = logging.getLogger("sdoh_api")
 # Initialize the SDOH agent
 try:
     start_state: AgentState = {
-    "note": note,
+    "note": None,
     "sdoh": {},
     "intervention": {},
     "retry_count" : 0,
@@ -85,13 +84,13 @@ class SDOHResponse(BaseModel):
         schema_extra = {
             "example": {
             "sdoh": {
-                "housing_instability": {"present": false, "reasoning": "No mention of housing issues.", "z_code": [], "interventions": []},
-                "food_insecurity": {"present": false, "reasoning": "No mention of food insecurity.", "z_code": [], "interventions": []},
-                "lack_of_transportation": {"present": false, "reasoning": "No mention of transportation issues.", "z_code": [], "interventions": []},
-                "financial_hardship": {"present": false, "reasoning": "No mention of financial issues.", "z_code": [], "interventions": []},
-                "domestic_violence": {"present": true, "reasoning": "Patient reports being hit by her husband.", "z_code": ["Z62.81"], "interventions": ["Contact the Domestic Violence Community Advocacy Program at Salvation Army Eastside Corps for support and resources.", "Consider counseling or therapy services specializing in domestic violence.", "Explore local shelters or safe houses if immediate safety is a concern."]},
-                "language_barriers": {"present": false, "reasoning": "No mention of language barriers.", "z_code": [], "interventions": []},
-                "low_health_literacy": {"present": true, "reasoning": "Patient unable to specify therapy learnings.", "z_code": ["Z55.9"], "interventions": ["Provide educational materials in simpler language.", "Offer one-on-one health education sessions to improve understanding of health conditions and treatments.", "Utilize teach-back methods to ensure comprehension of health information."]}
+                "housing_instability": {"present": False, "reasoning": "No mention of housing issues.", "z_code": [], "interventions": []},
+                "food_insecurity": {"present": False, "reasoning": "No mention of food insecurity.", "z_code": [], "interventions": []},
+                "lack_of_transportation": {"present": False, "reasoning": "No mention of transportation issues.", "z_code": [], "interventions": []},
+                "financial_hardship": {"present": False, "reasoning": "No mention of financial issues.", "z_code": [], "interventions": []},
+                "domestic_violence": {"present": True, "reasoning": "Patient reports being hit by her husband.", "z_code": ["Z62.81"], "interventions": ["Contact the Domestic Violence Community Advocacy Program at Salvation Army Eastside Corps for support and resources.", "Consider counseling or therapy services specializing in domestic violence.", "Explore local shelters or safe houses if immediate safety is a concern."]},
+                "language_barriers": {"present": False, "reasoning": "No mention of language barriers.", "z_code": [], "interventions": []},
+                "low_health_literacy": {"present": True, "reasoning": "Patient unable to specify therapy learnings.", "z_code": ["Z55.9"], "interventions": ["Provide educational materials in simpler language.", "Offer one-on-one health education sessions to improve understanding of health conditions and treatments.", "Utilize teach-back methods to ensure comprehension of health information."]}
             },
             "audit_trail": [
                 {
@@ -100,13 +99,13 @@ class SDOHResponse(BaseModel):
                 "changes": {
                     "modified": {
                     "sdoh": {
-                        "housing_instability": {"present": false, "reasoning": "No mention of housing issues."},
-                        "food_insecurity": {"present": false, "reasoning": "No mention of food insecurity."},
-                        "lack_of_transportation": {"present": false, "reasoning": "No mention of transportation issues."},
-                        "financial_hardship": {"present": false, "reasoning": "No mention of financial issues."},
-                        "domestic_violence": {"present": true, "reasoning": "Patient reports hitting her husband."},
-                        "language_barriers": {"present": false, "reasoning": "No mention of language barriers."},
-                        "low_health_literacy": {"present": true, "reasoning": "Patient unable to specify therapy learnings."}
+                        "housing_instability": {"present": False, "reasoning": "No mention of housing issues."},
+                        "food_insecurity": {"present": False, "reasoning": "No mention of food insecurity."},
+                        "lack_of_transportation": {"present": False, "reasoning": "No mention of transportation issues."},
+                        "financial_hardship": {"present": False, "reasoning": "No mention of financial issues."},
+                        "domestic_violence": {"present": True, "reasoning": "Patient reports hitting her husband."},
+                        "language_barriers": {"present": False, "reasoning": "No mention of language barriers."},
+                        "low_health_literacy": {"present": True, "reasoning": "Patient unable to specify therapy learnings."}
                     }
                     },
                     "added": {},
@@ -216,7 +215,7 @@ async def parse_sdoh_and_make_recs(note: ClinicalNoteRequest) -> StreamingRespon
     )
     
 
-@app.get("/")
+@app.get("/health")
 async def health_check():
     """Tests to verify the API is running."""
     return {"status": "hello SDOH api is up", "time": time.time()}
