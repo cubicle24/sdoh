@@ -20,6 +20,59 @@ import uvicorn
 from src.sdoh_agent import run_agent, AgentState, build_agent
 
 
+class ClinicalNoteRequest(BaseModel):
+    note: str = Field(
+        ...,
+        description="Patient clinical note text",
+        min_length=10
+    )
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "note": "Patient is a 68 year old male. He is homeless and lives in his car. He lost his job recently and relies on meals from soup kitchens. His car also broke down."
+            }
+        }
+
+class SDOHResponse(BaseModel):
+    sdoh: Dict[str, Dict] = {}
+    audit_trail: List[Dict] = []
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+            "sdoh": {
+                "housing_instability": {"present": False, "reasoning": "No mention of housing issues.", "z_code": [], "interventions": []},
+                "food_insecurity": {"present": False, "reasoning": "No mention of food insecurity.", "z_code": [], "interventions": []},
+                "lack_of_transportation": {"present": False, "reasoning": "No mention of transportation issues.", "z_code": [], "interventions": []},
+                "financial_hardship": {"present": False, "reasoning": "No mention of financial issues.", "z_code": [], "interventions": []},
+                "domestic_violence": {"present": True, "reasoning": "Patient reports being hit by her husband.", "z_code": ["Z62.81"], "interventions": ["Contact the Domestic Violence Community Advocacy Program at Salvation Army Eastside Corps for support and resources.", "Consider counseling or therapy services specializing in domestic violence.", "Explore local shelters or safe houses if immediate safety is a concern."]},
+                "language_barriers": {"present": False, "reasoning": "No mention of language barriers.", "z_code": [], "interventions": []},
+                "low_health_literacy": {"present": True, "reasoning": "Patient unable to specify therapy learnings.", "z_code": ["Z55.9"], "interventions": ["Provide educational materials in simpler language.", "Offer one-on-one health education sessions to improve understanding of health conditions and treatments.", "Utilize teach-back methods to ensure comprehension of health information."]}
+            },
+            "audit_trail": [
+                {
+                "step": "extract_sdoh_risk_factors",
+                "timestamp": "2025-06-05T19:11:23.099026",
+                "changes": {
+                    "modified": {
+                    "sdoh": {
+                        "housing_instability": {"present": False, "reasoning": "No mention of housing issues."},
+                        "food_insecurity": {"present": False, "reasoning": "No mention of food insecurity."},
+                        "lack_of_transportation": {"present": False, "reasoning": "No mention of transportation issues."},
+                        "financial_hardship": {"present": False, "reasoning": "No mention of financial issues."},
+                        "domestic_violence": {"present": True, "reasoning": "Patient reports hitting her husband."},
+                        "language_barriers": {"present": False, "reasoning": "No mention of language barriers."},
+                        "low_health_literacy": {"present": True, "reasoning": "Patient unable to specify therapy learnings."}
+                    }
+                    },
+                    "added": {},
+                    "removed": {}
+                }
+                }    
+            ]
+            }
+        }
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -63,57 +116,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class ClinicalNoteRequest(BaseModel):
-    note: str = Field(
-        ...,
-        description="Patient clinical note text",
-        min_length=10
-    )
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "note": "Patient is a 68 year old male. He is homeless and lives in his car. He lost his job recently and relies on meals from churches. His car also broke down."
-            }
-        }
 
-class SDOHResponse(BaseModel):
-    sdoh: Dict[str, Dict]
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-            "sdoh": {
-                "housing_instability": {"present": False, "reasoning": "No mention of housing issues.", "z_code": [], "interventions": []},
-                "food_insecurity": {"present": False, "reasoning": "No mention of food insecurity.", "z_code": [], "interventions": []},
-                "lack_of_transportation": {"present": False, "reasoning": "No mention of transportation issues.", "z_code": [], "interventions": []},
-                "financial_hardship": {"present": False, "reasoning": "No mention of financial issues.", "z_code": [], "interventions": []},
-                "domestic_violence": {"present": True, "reasoning": "Patient reports being hit by her husband.", "z_code": ["Z62.81"], "interventions": ["Contact the Domestic Violence Community Advocacy Program at Salvation Army Eastside Corps for support and resources.", "Consider counseling or therapy services specializing in domestic violence.", "Explore local shelters or safe houses if immediate safety is a concern."]},
-                "language_barriers": {"present": False, "reasoning": "No mention of language barriers.", "z_code": [], "interventions": []},
-                "low_health_literacy": {"present": True, "reasoning": "Patient unable to specify therapy learnings.", "z_code": ["Z55.9"], "interventions": ["Provide educational materials in simpler language.", "Offer one-on-one health education sessions to improve understanding of health conditions and treatments.", "Utilize teach-back methods to ensure comprehension of health information."]}
-            },
-            "audit_trail": [
-                {
-                "step": "extract_sdoh_risk_factors",
-                "timestamp": "2025-06-05T19:11:23.099026",
-                "changes": {
-                    "modified": {
-                    "sdoh": {
-                        "housing_instability": {"present": False, "reasoning": "No mention of housing issues."},
-                        "food_insecurity": {"present": False, "reasoning": "No mention of food insecurity."},
-                        "lack_of_transportation": {"present": False, "reasoning": "No mention of transportation issues."},
-                        "financial_hardship": {"present": False, "reasoning": "No mention of financial issues."},
-                        "domestic_violence": {"present": True, "reasoning": "Patient reports hitting her husband."},
-                        "language_barriers": {"present": False, "reasoning": "No mention of language barriers."},
-                        "low_health_literacy": {"present": True, "reasoning": "Patient unable to specify therapy learnings."}
-                    }
-                    },
-                    "added": {},
-                    "removed": {}
-                }
-                }    
-            ]
-            }
-        }
 
 # Middleware for request timing and logging
 @app.middleware("http")
@@ -158,7 +161,8 @@ async def run_agent_sync(note: ClinicalNoteRequest) -> SDOHResponse:
             raise HTTPException(status_code=400, detail="Note is empty or too short (20 chars min)")
         final_state = graph.invoke({"note": note.note})
         sdoh_data = final_state.get("sdoh",{})
-        return SDOHResponse(sdoh=sdoh_data)
+        audit_data = final_state.get("audit_trail",[])
+        return SDOHResponse(sdoh=sdoh_data, audit_trail=audit_data)
     except HTTPException:
         raise
     except Exception as e:

@@ -36,8 +36,8 @@ class TestSDOHAPI:
         data = response.json()
         print(f"here is response in test:###############:{data}")
         assert "sdoh" in data
-        assert "audit_trail" in data["sdoh"]
-        assert len(data["sdoh"]["audit_trail"]) > 0
+        assert "audit_trail" in data
+        assert len(data["audit_trail"]) > 0
 
     # def test_agent_no_sdoh_in_note(self):
     #     """Tests the agent: does it parse sdoh risk factors and return interventions"""
@@ -55,7 +55,7 @@ class TestSDOHAPI:
 
     def test_agent_simple_note_streaming(self):
         body = {
-            "note": "Patient is a 68 year old male. He is homeless and lives in his car."
+            "note": "Patient is a 68 year old male. He is homeless and lives in his car. He lost his job recently and relies on meals from churches. His car also broke down."
         }
         response = self.client.post("/sdoh/run_agent", json=body)
         assert response.status_code == 200
