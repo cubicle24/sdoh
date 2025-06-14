@@ -53,6 +53,8 @@ def load_prompt(prompt_file_path: str, input_vars: List[str]) -> PromptTemplate:
     Returns:
         a Langchain formatted prompt template (which is a str)
     """
+    project_root = Path(__file__).parent.parent
+    prompt_file_path = os.path.join(project_root, prompt_file_path)
     prompt_string = Path(prompt_file_path).read_text()
     template = PromptTemplate(template=prompt_string, input_variables=input_vars)
     return template
@@ -127,7 +129,7 @@ def extract_sdoh_risk_factors(state: AgentState) -> AgentState:
     clinical_note = state["note"]
     # prompt = load_prompt("../prompts/extract_sdoh_risk_factors.txt", ["clinical_note"])
     # prompt = load_prompt("../prompts/extract_sdoh_v2.txt", ["clinical_note"])
-    prompt = load_prompt("../prompts/extract_sdoh_v3.txt", ["clinical_note"])
+    prompt = load_prompt("prompts/extract_sdoh_v3.txt", ["clinical_note"])
     risk_factors = call_llm_with_tools(prompt, {"clinical_note": clinical_note}, None)
 
     new_state = {**state, "sdoh": risk_factors}
@@ -138,7 +140,7 @@ def extract_sdoh_risk_factors(state: AgentState) -> AgentState:
 def map_to_z_codes(state: AgentState) -> AgentState:
     """Map social risk factors to ICD10 Z codes"""
     sdoh_risk_factors = state["sdoh"]
-    prompt = load_prompt("../prompts/extract_zcodes_v1.txt", ["sdoh_risk_factors"])
+    prompt = load_prompt("prompts/extract_zcodes_v1.txt", ["sdoh_risk_factors"])
     z_codes = call_llm_with_tools(prompt, {"sdoh_risk_factors": sdoh_risk_factors}, None)
 
     new_state = {**state, "sdoh": z_codes}
@@ -192,7 +194,7 @@ def recommend_interventions(state: AgentState) -> AgentState:
     sdoh_risk_factors = state.get("sdoh", {})
     social_services = state.get("social_services", {})
 
-    prompt = load_prompt("../prompts/recommend_interventions_v3.txt", ["sdoh_risk_factors","social_services"])
+    prompt = load_prompt("prompts/recommend_interventions_v3.txt", ["sdoh_risk_factors","social_services"])
     try:
         response = call_llm_with_tools(prompt, {"sdoh_risk_factors": sdoh_risk_factors,"social_services": social_services}, None)
         return {**state, "sdoh": response, "social_services" : social_services}   

@@ -81,7 +81,7 @@ class SDOHResponse(BaseModel):
     audit_trail: Dict[str, List]
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
             "sdoh": {
                 "housing_instability": {"present": False, "reasoning": "No mention of housing issues.", "z_code": [], "interventions": []},
