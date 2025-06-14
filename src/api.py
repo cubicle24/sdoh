@@ -78,7 +78,6 @@ class ClinicalNoteRequest(BaseModel):
 
 class SDOHResponse(BaseModel):
     sdoh: Dict[str, Dict]
-    audit_trail: Dict[str, List]
     
     class Config:
         json_schema_extra = {
@@ -116,8 +115,6 @@ class SDOHResponse(BaseModel):
             }
         }
 
-        
-
 # Middleware for request timing and logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -146,14 +143,37 @@ NODES_DICT = {
 }
 
 # API endpoints
-@app.post("/sdoh/run_agent", response_model=SDOHResponse)
-async def parse_sdoh_and_make_recs(note: ClinicalNoteRequest) -> StreamingResponse:
+
+@app.post("/sdoh/run_agent_sync", response_model=SDOHResponse)
+async def run_agent_sync(note: ClinicalNoteRequest) -> SDOHResponse:
     """
-    Parses a note and streams its step by step reasoning as it extracts SDOH risk factors and makes recommendations.
+    Parses a note and extracts SDOH risk factors and makes recommendations. SYNC version
     Args:
         request (ClinicalNoteRequest): the text of a clinical note.
     Returns:
         SDOHResponse: the patient's SDOH risk factors and recommended interventions.
+    """
+    try:
+        if not note.note or note.note.strip() == "" or len(note.note) <= 20:
+            raise HTTPException(status_code=400, detail="Note is empty or too short (20 chars min)")
+        final_state = graph.invoke({"note": note.note})
+        sdoh_data = final_state.get("sdoh",{})
+        return SDOHResponse(sdoh=sdoh_data)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error running SDOH agent: {str(e)}")
+        raise HTTPException(status_code=500, detail="Sorry, our fault. Internal server error")
+
+
+@app.post("/sdoh/run_agent")
+async def run_agent(note: ClinicalNoteRequest) -> StreamingResponse:
+    """
+    Parses a note and *streams* its step by step reasoning as it extracts SDOH risk factors and makes recommendations.
+    Args:
+        request (ClinicalNoteRequest): the text of a clinical note.
+    Returns:
+        StreamingResponse: the patient's SDOH risk factors, interventions, delivered piecemeal
     """
     def event_generator():
         for event in graph.stream(note, stream_mode="updates"):
