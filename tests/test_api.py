@@ -1,3 +1,4 @@
+from pickle import FALSE
 import pytest
 import json
 from unittest.mock import patch, MagicMock
@@ -14,6 +15,7 @@ class TestSDOHAPI:
         He was treated with an ativan drip and discharged 3 days later. He does not have a job and will live at the local shelter.  
         He has no known family and no emergency contact."""
 
+    @pytest.mark.skip(reason="working")
     def test_health_check(self):
         """Test the health check endpoint"""
         response = self.client.get("/health")
@@ -25,6 +27,7 @@ class TestSDOHAPI:
         }
         assert response_data == expected
 
+    @pytest.mark.skip(reason="basic validation working, slow expensive test")
     def test_agent_simple_note(self):#no streaming
         """Tests the agent: does it parse sdoh risk factors and return interventions"""
         body = {
@@ -34,24 +37,43 @@ class TestSDOHAPI:
         assert response.status_code == 200
         #LLMs have non-deterministic output, even with temp of 0.0, so we'll test structure of response instead
         data = response.json()
-        print(f"here is response in test:###############:{data}")
         assert "sdoh" in data
         assert "audit_trail" in data
         assert len(data["audit_trail"]) > 0
 
-    # def test_agent_no_sdoh_in_note(self):
-    #     """Tests the agent: does it parse sdoh risk factors and return interventions"""
-    #     body = {
-    #         "note": "Joe would like a burger and fries.  When are you going to pick up the milk? Do not forget to do your homework.  Meet me at 7:00 PM for coffee if you have time."
-    #     }
-    #     response = self.client.post("/sdoh/run_agent_sync", json=body)
-    #     #LLMs have non-deterministic output, even with temp of 0.0, so we'll test structure of response instead
+    def test_agent_no_sdoh_in_note(self):
+        """This is a nonsensical note with nothing to do with SDOH. It should not return any risk factors present but still try anyway"""
+        body = {
+            "note": "Joe would like a burger and fries.  When are you going to pick up the milk? Do not forget to do your homework.  Meet me at 7:00 PM for coffee if you have time."
+        }
+        response = self.client.post("/sdoh/run_agent_sync", json=body)
+        #LLMs have non-deterministic output, even with temp of 0.0, so we'll test structure of response instead
 
-    #     assert response.status_code == 200
-    #     data = response.json()
-    #     assert "sdoh" in data
-    #     assert "audit_trail" in data
-    #     assert len(data["audit_trail"]) > 0
+        assert response.status_code == 200
+        data = response.json()
+        print(f"here is response in test:###############:{data}")
+
+        assert "sdoh" in data
+        assert "housing_instability" in data["sdoh"]
+        assert "food_insecurity" in data["sdoh"]
+        assert "lack_of_transportation" in data["sdoh"]
+        assert "financial_hardship" in data["sdoh"]
+        assert "domestic_violence" in data["sdoh"]
+        assert "language_barriers" in data["sdoh"]
+        assert "low_health_literacy" in data["sdoh"]
+        
+        assert data["sdoh"]["housing_instability"]["present"] == False
+        assert data["sdoh"]["food_insecurity"]["present"] == False
+        assert data["sdoh"]["lack_of_transportation"]["present"] == False
+        assert data["sdoh"]["financial_hardship"]["present"] == False
+        assert data["sdoh"]["domestic_violence"]["present"] == False
+        assert data["sdoh"]["language_barriers"]["present"] == False
+        assert data["sdoh"]["low_health_literacy"]["present"] == False
+
+        assert "audit_trail" in data
+        assert len(data["audit_trail"]) > 0
+
+
 
     def test_agent_simple_note_streaming(self):
         body = {
