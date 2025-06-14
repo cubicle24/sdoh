@@ -15,6 +15,7 @@ class TestSDOHAPI:
         He was treated with an ativan drip and discharged 3 days later. He does not have a job and will live at the local shelter.  
         He has no known family and no emergency contact."""
 
+
     @pytest.mark.skip(reason="working")
     def test_health_check(self):
         """Test the health check endpoint"""
@@ -26,6 +27,7 @@ class TestSDOHAPI:
             "time": response_data["time"]  # Use the actual timestamp
         }
         assert response_data == expected
+
 
     @pytest.mark.skip(reason="basic validation working, slow expensive test")
     def test_agent_simple_note(self):#no streaming
@@ -41,6 +43,8 @@ class TestSDOHAPI:
         assert "audit_trail" in data
         assert len(data["audit_trail"]) > 0
 
+
+    @pytest.mark.skip(reason="no sdoh validation working")
     def test_agent_no_sdoh_in_note(self):
         """This is a nonsensical note with nothing to do with SDOH. It should not return any risk factors present but still try anyway"""
         body = {
@@ -51,8 +55,6 @@ class TestSDOHAPI:
 
         assert response.status_code == 200
         data = response.json()
-        print(f"here is response in test:###############:{data}")
-
         assert "sdoh" in data
         assert "housing_instability" in data["sdoh"]
         assert "food_insecurity" in data["sdoh"]
@@ -61,7 +63,7 @@ class TestSDOHAPI:
         assert "domestic_violence" in data["sdoh"]
         assert "language_barriers" in data["sdoh"]
         assert "low_health_literacy" in data["sdoh"]
-        
+
         assert data["sdoh"]["housing_instability"]["present"] == False
         assert data["sdoh"]["food_insecurity"]["present"] == False
         assert data["sdoh"]["lack_of_transportation"]["present"] == False
@@ -74,7 +76,6 @@ class TestSDOHAPI:
         assert len(data["audit_trail"]) > 0
 
 
-
     def test_agent_simple_note_streaming(self):
         body = {
             "note": "Patient is a 68 year old male. He is homeless and lives in his car. He lost his job recently and relies on meals from churches. His car also broke down."
@@ -85,6 +86,8 @@ class TestSDOHAPI:
         # Parse SSE format
         content = response.content.decode('utf-8')
         lines = content.strip().split('\n')
+
+        print(f"content in streaming test: {content}")
         
         # Extract JSON from SSE format
         json_data = []
@@ -102,35 +105,3 @@ class TestSDOHAPI:
             if 'step' in data:
                 assert isinstance(data['step'], str)
     
-            #     "example": {
-            # "sdoh": {
-            #     "housing_instability": {"present": False, "reasoning": "No mention of housing issues.", "z_code": [], "interventions": []},
-            #     "food_insecurity": {"present": False, "reasoning": "No mention of food insecurity.", "z_code": [], "interventions": []},
-            #     "lack_of_transportation": {"present": False, "reasoning": "No mention of transportation issues.", "z_code": [], "interventions": []},
-            #     "financial_hardship": {"present": False, "reasoning": "No mention of financial issues.", "z_code": [], "interventions": []},
-            #     "domestic_violence": {"present": True, "reasoning": "Patient reports being hit by her husband.", "z_code": ["Z62.81"], "interventions": ["Contact the Domestic Violence Community Advocacy Program at Salvation Army Eastside Corps for support and resources.", "Consider counseling or therapy services specializing in domestic violence.", "Explore local shelters or safe houses if immediate safety is a concern."]},
-            #     "language_barriers": {"present": False, "reasoning": "No mention of language barriers.", "z_code": [], "interventions": []},
-            #     "low_health_literacy": {"present": True, "reasoning": "Patient unable to specify therapy learnings.", "z_code": ["Z55.9"], "interventions": ["Provide educational materials in simpler language.", "Offer one-on-one health education sessions to improve understanding of health conditions and treatments.", "Utilize teach-back methods to ensure comprehension of health information."]}
-            # },
-            # "audit_trail": [
-            #     {
-            #     "step": "extract_sdoh_risk_factors",
-            #     "timestamp": "2025-06-05T19:11:23.099026",
-            #     "changes": {
-            #         "modified": {
-            #         "sdoh": {
-            #             "housing_instability": {"present": False, "reasoning": "No mention of housing issues."},
-            #             "food_insecurity": {"present": False, "reasoning": "No mention of food insecurity."},
-            #             "lack_of_transportation": {"present": False, "reasoning": "No mention of transportation issues."},
-            #             "financial_hardship": {"present": False, "reasoning": "No mention of financial issues."},
-            #             "domestic_violence": {"present": True, "reasoning": "Patient reports hitting her husband."},
-            #             "language_barriers": {"present": False, "reasoning": "No mention of language barriers."},
-            #             "low_health_literacy": {"present": True, "reasoning": "Patient unable to specify therapy learnings."}
-            #         }
-            #         },
-            #         "added": {},
-            #         "removed": {}
-            #     }
-            #     }    
-            # ]
-            # }

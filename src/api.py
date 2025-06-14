@@ -246,7 +246,7 @@ async def health_check():
 
 # Main entry point
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 8001))
     host = os.environ.get("HOST", "0.0.0.0")
     
     logger.info(f"Health check called: SDOH API server on {host}:{port}")
