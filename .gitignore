@@ -6,7 +6,6 @@
 !.gitignore
 !README.md
 !/prompts/
-!/notes_repository/
 !/conftest.py
 !/Makefile
 !/pytest.ini
